@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <% pageTitle = (post ? 'edit entry' : 'new entry') + ' — rosie diary' %>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <%- include('partials/nav') %>
+
+  <div class="wrap">
+    <div class="panel">
+      <h1 class="panel-title"><%= post ? 'edit entry' : 'new entry' %></h1>
+      <form method="POST" action="<%= post ? '/admin/posts/' + post.id : '/admin/posts' %>">
+        <div class="field">
+          <label for="handle">handle</label>
+          <input
+            type="text"
+            id="handle"
+            name="handle"
+            value="<%= post && post.handle ? post.handle : currentUser.name %>"
+            maxlength="40"
+            required
+          >
+        </div>
+        <div class="field">
+          <label for="title">title</label>
+          <input type="text" id="title" name="title" value="<%= post ? post.title : '' %>" required>
+        </div>
+        <div class="field">
+          <label for="body">entry</label>
+          <textarea id="body" name="body" required><%= post ? post.body : '' %></textarea>
+        </div>
+        <div style="display:flex; gap:0.75rem;">
+          <button type="submit" class="btn"><%= post ? 'save changes' : 'publish' %></button>
+          <a class="btn ghost" href="/admin">cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

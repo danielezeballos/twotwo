@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <% pageTitle = 'admin — rosie diary' %>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <%- include('partials/nav') %>
+
+  <div class="wrap">
+    <div class="admin-row">
+      <div>
+        <div class="entry-date">signed in as <%= currentUser.username %></div>
+        <h1 class="panel-title" style="margin-top:0.4rem;">entries</h1>
+      </div>
+      <a class="btn" href="/admin/new">new entry</a>
+    </div>
+
+    <form class="handle-form" method="POST" action="/admin/handle">
+      <label for="default-handle">your handle</label>
+      <div class="handle-row">
+        <input
+          type="text"
+          id="default-handle"
+          name="handle"
+          value="<%= currentUser.name %>"
+          maxlength="40"
+          required
+        >
+        <button type="submit" class="btn">save handle</button>
+      </div>
+      <% if (typeof handleSaved !== 'undefined' && handleSaved) { %>
+        <div class="handle-note">handle saved — new entries will use this by default.</div>
+      <% } else { %>
+        <div class="handle-note">this is the default HANDLE shown on new entries. you can still change it per entry.</div>
+      <% } %>
+    </form>
+
+    <% if (posts.length === 0) { %>
+      <p class="empty">no entries yet.</p>
+    <% } else { %>
+      <div>
+        <% posts.forEach(function(post) { %>
+          <div class="admin-list-item">
+            <div class="title-block">
+              <a href="/post/<%= post.slug %>"><%= post.title %></a>
+              <div class="meta">
+                <%= new Date(post.created_at + 'Z').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) %>
+                &middot; <%= post.author_name %>
+              </div>
+            </div>
+            <div class="admin-actions">
+              <a class="btn ghost" href="/admin/posts/<%= post.id %>/edit">edit</a>
+              <form action="/admin/posts/<%= post.id %>/delete" method="POST" onsubmit="return confirm('Delete this entry? This cannot be undone.');">
+                <button type="submit" class="btn danger">delete</button>
+              </form>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <div class="admin-row" style="margin-top:3rem;">
+      <div>
+        <h1 class="panel-title" style="margin:0;">music</h1>
+        <div class="handle-note">upload mp3s for the music page.</div>
+      </div>
+    </div>
+
+    <form class="handle-form" method="POST" action="/admin/tracks" enctype="multipart/form-data">
+      <div class="field">
+        <label for="track-title">track title</label>
+        <input type="text" id="track-title" name="title" maxlength="120" placeholder="optional — defaults to filename">
+      </div>
+      <div class="field">
+        <label for="track-file">mp3 file</label>
+        <input type="file" id="track-file" name="track" accept="audio/mpeg,.mp3" required>
+      </div>
+      <% if (typeof trackError !== 'undefined' && trackError) { %>
+        <div class="error-msg"><%= trackError %></div>
+      <% } %>
+      <% if (typeof trackSaved !== 'undefined' && trackSaved) { %>
+        <div class="handle-note">track uploaded.</div>
+      <% } %>
+      <button type="submit" class="btn">add track</button>
+    </form>
+
+    <% const trackList = typeof tracks !== 'undefined' && tracks ? tracks : []; %>
+    <% if (trackList.length === 0) { %>
+      <p class="empty">no tracks yet.</p>
+    <% } else { %>
+      <div>
+        <% trackList.forEach(function(track) { %>
+          <div class="admin-list-item">
+            <div class="title-block">
+              <a href="/music"><%= track.title %></a>
+              <div class="meta"><%= track.original_name %></div>
+            </div>
+            <div class="admin-actions">
+              <form action="/admin/tracks/<%= track.id %>/delete" method="POST" onsubmit="return confirm('Delete this track?');">
+                <button type="submit" class="btn danger">delete</button>
+              </form>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <div class="admin-row" style="margin-top:3rem;">
+      <div>
+        <h1 class="panel-title" style="margin:0;">photos</h1>
+        <div class="handle-note">upload images for the photos page.</div>
+      </div>
+    </div>
+
+    <form class="handle-form" method="POST" action="/admin/photos" enctype="multipart/form-data">
+      <div class="field">
+        <label for="photo-title">photo title</label>
+        <input type="text" id="photo-title" name="title" maxlength="120" placeholder="optional — defaults to filename">
+      </div>
+      <div class="field">
+        <label for="photo-file">image file</label>
+        <input type="file" id="photo-file" name="photo" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" required>
+      </div>
+      <% if (typeof photoError !== 'undefined' && photoError) { %>
+        <div class="error-msg"><%= photoError %></div>
+      <% } %>
+      <% if (typeof photoSaved !== 'undefined' && photoSaved) { %>
+        <div class="handle-note">photo uploaded.</div>
+      <% } %>
+      <button type="submit" class="btn">add photo</button>
+    </form>
+
+    <% const photoList = typeof photos !== 'undefined' && photos ? photos : []; %>
+    <% if (photoList.length === 0) { %>
+      <p class="empty">no photos yet.</p>
+    <% } else { %>
+      <div>
+        <% photoList.forEach(function(photo) { %>
+          <div class="admin-list-item">
+            <div class="title-block">
+              <a href="/photos"><%= photo.title %></a>
+              <div class="meta"><%= photo.original_name %></div>
+            </div>
+            <div class="admin-actions">
+              <form action="/admin/photos/<%= photo.id %>/delete" method="POST" onsubmit="return confirm('Delete this photo?');">
+                <button type="submit" class="btn danger">delete</button>
+              </form>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <div class="admin-row" style="margin-top:3rem;">
+      <div>
+        <h1 class="panel-title" style="margin:0;">graffiti wall</h1>
+        <div class="handle-note">
+          <% const strokeCount = typeof graffitiCount !== 'undefined' ? graffitiCount : 0; %>
+          <%= strokeCount %> saved mark<%= strokeCount === 1 ? '' : 's' %> on the intro page.
+        </div>
+        <% if (typeof graffitiCleared !== 'undefined' && graffitiCleared) { %>
+          <div class="handle-note">wall cleared.</div>
+        <% } %>
+      </div>
+      <form action="/admin/graffiti/clear" method="POST" onsubmit="return confirm('Clear the graffiti wall? This cannot be undone.');">
+        <button type="submit" class="btn danger">clear wall</button>
+      </form>
+    </div>
+  </div>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

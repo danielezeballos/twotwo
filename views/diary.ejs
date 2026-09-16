@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <% pageTitle = 'diary — two two' %>
+  <%- include('partials/head') %>
+</head>
+<body>
+
+  <%- include('partials/nav') %>
+
+  <main class="bbs-shell">
+    <header class="bbs-intro">
+      <div class="bbs-kicker">a small correspondence</div>
+      <h1>two two / diary</h1>
+      <p>two voices, one thread, whenever there's something to say.</p>
+    </header>
+
+    <section class="compose" id="write">
+      <div class="bbs-kicker">new message</div>
+      <% if (error) { %>
+        <div class="error-msg"><%= error %></div>
+      <% } %>
+      <form method="POST" action="/diary">
+        <div class="field">
+          <label for="handle">handle</label>
+          <input
+            type="text"
+            id="handle"
+            name="handle"
+            value="<%= form.handle %>"
+            maxlength="40"
+            placeholder="anonymous"
+          >
+        </div>
+        <div class="field">
+          <label for="title">title</label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            value="<%= form.title %>"
+            maxlength="120"
+            placeholder="optional"
+          >
+        </div>
+        <div class="field">
+          <label for="body">message</label>
+          <textarea id="body" name="body" required placeholder="write anything…"><%= form.body %></textarea>
+        </div>
+        <button type="submit" class="btn">post</button>
+      </form>
+    </section>
+
+    <div class="feed" id="entries">
+    <% if (posts.length === 0) { %>
+      <article class="entry empty-entry">
+        <div class="entry-number">#000000 &nbsp;&nbsp; waiting for the first message</div>
+        <div class="entry-date">HANDLE: &nbsp; two two &nbsp;&nbsp; DATE: &nbsp; unknown</div>
+        <p class="entry-excerpt">nothing's been written yet &mdash; the first entry is still ahead.</p>
+      </article>
+    <% } else { %>
+      <% posts.forEach(function(post) { %>
+        <article class="entry">
+          <div class="entry-number">#<%= String(post.id).padStart(6, '0') %> &nbsp;&nbsp; <a href="/post/<%= post.slug %>"><%= post.title %></a></div>
+          <div class="entry-date">
+            HANDLE: &nbsp; <%= post.author_name %> &nbsp;&nbsp; DATE: &nbsp;
+            <%= new Date(post.created_at + 'Z').toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' }) %>
+          </div>
+          <p class="entry-excerpt">
+            <%
+              const plain = post.body.replace(/\s+/g, ' ').trim();
+              const excerpt = plain.length > 420 ? plain.slice(0, 420).trim() + '…' : plain;
+            %>
+            <%= excerpt %>
+          </p>
+          <a class="entry-reply" href="/post/<%= post.slug %>">[ READ ]</a>
+        </article>
+      <% }); %>
+    <% } %>
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

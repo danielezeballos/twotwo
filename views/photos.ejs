@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <% pageTitle = 'photos — two two' %>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <%- include('partials/nav') %>
+
+  <main class="bbs-shell">
+    <header class="bbs-intro">
+      <div class="bbs-kicker">looking room</div>
+      <h1>two two / photos</h1>
+      <p>pictures, whenever there's something to show.</p>
+    </header>
+
+    <div class="photo-feed">
+      <% if (photos.length === 0) { %>
+        <p class="empty">no photos yet — add images from admin.</p>
+      <% } else { %>
+        <% photos.forEach(function(photo) { %>
+          <article class="photo-entry">
+            <div class="entry-number">#<%= String(photo.id).padStart(6, '0') %> &nbsp;&nbsp; <%= photo.title %></div>
+            <div class="entry-date">
+              DATE: &nbsp;
+              <%= new Date(photo.created_at + 'Z').toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' }) %>
+            </div>
+            <img
+              class="photo-image"
+              src="/uploads/photos/<%= photo.filename %>"
+              alt="<%= photo.title %>"
+            >
+          </article>
+        <% }); %>
+      <% } %>
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

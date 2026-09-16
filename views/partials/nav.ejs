@@ -1,0 +1,20 @@
+<div class="nav">
+  <a class="brand" href="/">two two</a>
+  <div class="nav-center">
+    <a href="/photos">photos</a>
+    <% if (currentUser) { %>
+      <a href="/admin">admin</a>
+    <% } else { %>
+      <a href="/login">admin</a>
+    <% } %>
+  </div>
+  <div class="nav-links">
+    <a href="/diary">diary</a>
+    <a href="/music">music</a>
+    <% if (currentUser) { %>
+      <form action="/logout" method="POST" style="display:inline">
+        <button type="submit" class="btn ghost" style="padding:0;border:none;background:none;font-family:inherit;font-size:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;cursor:pointer;">log out</button>
+      </form>
+    <% } %>
+  </div>
+</div>

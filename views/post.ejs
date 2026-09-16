@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <% pageTitle = post.title + ' — two two' %>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <%- include('partials/nav') %>
+
+  <div class="wrap">
+    <div class="post-header">
+      <div class="entry-date">
+        <%= new Date(post.created_at + 'Z').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+        &middot; <%= post.author_name %>
+      </div>
+      <h1 class="post-title"><%= post.title %></h1>
+    </div>
+
+    <div class="post-body"><%= post.body %></div>
+
+    <a class="back-link" href="/diary">&larr; back to the diary</a>
+  </div>
+
+  <%- include('partials/footer') %>
+</body>
+</html>
