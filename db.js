@@ -75,28 +75,35 @@ if (!postColumns.includes("handle")) {
 function seedAdmins() {
   const admins = [
     {
-      username: process.env.ADMIN1_USERNAME,
-      password: process.env.ADMIN1_PASSWORD,
-      name: process.env.ADMIN1_NAME || process.env.ADMIN1_USERNAME,
+      username: (process.env.ADMIN1_USERNAME || "").trim(),
+      password: process.env.ADMIN1_PASSWORD || "",
+      name: (process.env.ADMIN1_NAME || process.env.ADMIN1_USERNAME || "").trim(),
     },
     {
-      username: process.env.ADMIN2_USERNAME,
-      password: process.env.ADMIN2_PASSWORD,
-      name: process.env.ADMIN2_NAME || process.env.ADMIN2_USERNAME,
+      username: (process.env.ADMIN2_USERNAME || "").trim(),
+      password: process.env.ADMIN2_PASSWORD || "",
+      name: (process.env.ADMIN2_NAME || process.env.ADMIN2_USERNAME || "").trim(),
     },
   ];
 
   const insert = db.prepare(
     "INSERT INTO users (username, password_hash, display_name) VALUES (?, ?, ?)"
   );
+  const update = db.prepare(
+    "UPDATE users SET password_hash = ?, display_name = ? WHERE username = ?"
+  );
   const exists = db.prepare("SELECT id FROM users WHERE username = ?");
 
   for (const admin of admins) {
     if (!admin.username || !admin.password) continue;
-    if (exists.get(admin.username)) continue;
     const hash = bcrypt.hashSync(admin.password, 12);
-    insert.run(admin.username, hash, admin.name);
-    console.log(`Seeded admin user: ${admin.username}`);
+    if (exists.get(admin.username)) {
+      update.run(hash, admin.name || admin.username, admin.username);
+      console.log(`Updated admin user: ${admin.username}`);
+    } else {
+      insert.run(admin.username, hash, admin.name || admin.username);
+      console.log(`Seeded admin user: ${admin.username}`);
+    }
   }
 }
 

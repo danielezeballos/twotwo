@@ -69,6 +69,9 @@ const uploadPhoto = multer({
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: "1mb" }));
@@ -285,10 +288,11 @@ app.get("/login", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  const { username, password } = req.body;
+  const username = (req.body.username || "").trim();
+  const password = req.body.password || "";
   const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
 
-  if (!user || !bcrypt.compareSync(password || "", user.password_hash)) {
+  if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).render("login", { error: "Wrong username or password." });
   }
 
