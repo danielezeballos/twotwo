@@ -23,25 +23,84 @@ const PHOTO_DIR = path.join(
   "uploads",
   "photos"
 );
+const FILM_DIR = path.join(
+  DATA_DIR === __dirname ? path.join(__dirname, "public") : DATA_DIR,
+  "uploads",
+  "films"
+);
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 fs.mkdirSync(PHOTO_DIR, { recursive: true });
+fs.mkdirSync(FILM_DIR, { recursive: true });
 
-const upload = multer({
-  storage: multer.diskStorage({
+const MUSIC_EXTS = new Set([".mp3", ".m4a", ".aac", ".mpeg"]);
+const MUSIC_MAX_BYTES = 80 * 1024 * 1024;
+const WAV_EXTS = new Set([".wav", ".wave", ".aiff", ".aif"]);
+const WAV_TYPES = new Set([
+  "audio/wav",
+  "audio/wave",
+  "audio/x-wav",
+  "audio/x-pn-wav",
+  "audio/vnd.wave",
+  "audio/aiff",
+  "audio/x-aiff",
+  "audio/aif",
+]);
+const SECRET_MAX_BYTES = 600 * 1024 * 1024;
+
+function audioType(file) {
+  return (file.mimetype || "").toLowerCase().split(";")[0].trim();
+}
+
+function audioExt(file) {
+  return path.extname(file.originalname || "").toLowerCase();
+}
+
+function isMusicFile(file) {
+  const ext = audioExt(file);
+  const type = audioType(file);
+  return MUSIC_EXTS.has(ext) || type === "audio/mpeg" || type === "audio/mp3" || type === "audio/mp4" || type === "audio/aac";
+}
+
+function isSecretAudioFile(file) {
+  const ext = audioExt(file);
+  const type = audioType(file);
+  return WAV_EXTS.has(ext) || WAV_TYPES.has(type) || isMusicFile(file);
+}
+
+function uploadErrorMessage(err, fallback, maxLabel) {
+  if (!err) return fallback;
+  if (err.code === "LIMIT_FILE_SIZE") {
+    return `That file is too large (max ${maxLabel || "80MB"}).`;
+  }
+  return err.message || fallback;
+}
+
+function diskAudioStorage(defaultExt) {
+  return multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
     filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase() || ".mp3";
+      const ext = audioExt(file) || defaultExt;
       cb(null, `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${ext}`);
     },
-  }),
-  limits: { fileSize: 30 * 1024 * 1024 },
+  });
+}
+
+const upload = multer({
+  storage: diskAudioStorage(".mp3"),
+  limits: { fileSize: MUSIC_MAX_BYTES },
   fileFilter: (_req, file, cb) => {
-    const ok =
-      file.mimetype === "audio/mpeg" ||
-      file.mimetype === "audio/mp3" ||
-      path.extname(file.originalname).toLowerCase() === ".mp3";
-    cb(ok ? null : new Error("Only MP3 files are allowed."), ok);
+    const ok = isMusicFile(file);
+    cb(ok ? null : new Error("Please upload an MP3 file."), ok);
+  },
+});
+
+const uploadSecret = multer({
+  storage: diskAudioStorage(".wav"),
+  limits: { fileSize: SECRET_MAX_BYTES },
+  fileFilter: (_req, file, cb) => {
+    const ok = isSecretAudioFile(file);
+    cb(ok ? null : new Error("Please upload a high-res WAV file."), ok);
   },
 });
 
@@ -58,12 +117,48 @@ const uploadPhoto = multer({
       cb(null, `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${ext}`);
     },
   }),
-  limits: { fileSize: 15 * 1024 * 1024 },
+  limits: { fileSize: 25 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    const type = (file.mimetype || "").toLowerCase().split(";")[0].trim();
     const ok =
-      IMAGE_TYPES.has(file.mimetype) ||
-      IMAGE_EXTS.has(path.extname(file.originalname).toLowerCase());
-    cb(ok ? null : new Error("Only JPG, PNG, GIF, or WEBP images are allowed."), ok);
+      IMAGE_TYPES.has(type) ||
+      IMAGE_EXTS.has(ext) ||
+      type.startsWith("image/");
+    cb(ok ? null : new Error("Please upload a JPG, PNG, GIF, or WEBP image."), ok);
+  },
+});
+
+const FILM_EXTS = new Set([".mp4", ".m4v", ".webm", ".mov"]);
+const FILM_MAX_BYTES = 2 * 1024 * 1024 * 1024;
+
+function isFilmFile(file) {
+  const ext = path.extname(file.originalname || "").toLowerCase();
+  const type = (file.mimetype || "").toLowerCase().split(";")[0].trim();
+  return (
+    FILM_EXTS.has(ext) ||
+    type === "video/mp4" ||
+    type === "video/quicktime" ||
+    type === "video/webm" ||
+    type === "video/x-m4v" ||
+    type.startsWith("video/")
+  );
+}
+
+const uploadFilm = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, FILM_DIR),
+    filename: (_req, file, cb) => {
+      const ext = FILM_EXTS.has(path.extname(file.originalname).toLowerCase())
+        ? path.extname(file.originalname).toLowerCase()
+        : ".mp4";
+      cb(null, `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${ext}`);
+    },
+  }),
+  limits: { fileSize: FILM_MAX_BYTES },
+  fileFilter: (_req, file, cb) => {
+    const ok = isFilmFile(file);
+    cb(ok ? null : new Error("Please upload a film (mp4, m4v, webm, or mov)."), ok);
   },
 });
 
@@ -75,10 +170,63 @@ if (process.env.NODE_ENV === "production") {
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: "1mb" }));
+
+const CINEMA_TZ = "Europe/London";
+
+function londonClock(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: CINEMA_TZ,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const read = (type) => Number(parts.find((part) => part.type === type).value);
+  return { hour: read("hour"), minute: read("minute"), second: read("second") };
+}
+
+function getCinemaStatus(date = new Date()) {
+  const { hour, minute, second } = londonClock(date);
+  const nowSec = hour * 3600 + minute * 60 + second;
+  const openStart = 20 * 3600;
+  const openEnd = 24 * 3600;
+  const open = nowSec >= openStart && nowSec < openEnd;
+
+  let slot = null;
+  let slotKey = null;
+  let slotEnd = openEnd;
+  if (nowSec >= 20 * 3600 && nowSec < 22 * 3600) {
+    slot = "20:00 – 22:00";
+    slotKey = "20-22";
+    slotEnd = 22 * 3600;
+  } else if (nowSec >= 22 * 3600 && nowSec < 24 * 3600) {
+    slot = "22:00 – 00:00";
+    slotKey = "22-00";
+    slotEnd = 24 * 3600;
+  }
+
+  const targetSec = open ? slotEnd : openStart;
+  let waitSec = targetSec - nowSec;
+  if (waitSec <= 0) waitSec += 24 * 3600;
+
+  return {
+    open,
+    slot,
+    slotKey,
+    nextLabel: open ? null : "20:00",
+    reloadAfterMs: Math.min(waitSec * 1000, 24 * 60 * 60 * 1000),
+  };
+}
+
+app.use("/uploads/films", (req, res, next) => {
+  if (!getCinemaStatus().open) return res.status(404).end();
+  next();
+});
 app.use(express.static(path.join(__dirname, "public")));
 if (DATA_DIR !== __dirname) {
   app.use("/uploads/mp3", express.static(UPLOAD_DIR));
   app.use("/uploads/photos", express.static(PHOTO_DIR));
+  app.use("/uploads/films", express.static(FILM_DIR));
 }
 
 app.use(
@@ -114,6 +262,13 @@ const POST_SELECT = `SELECT posts.*,
 
 app.get("/", (req, res) => {
   res.render("index");
+});
+
+app.get("/secretgiftforyou", (req, res) => {
+  const tracks = db
+    .prepare("SELECT * FROM secret_tracks ORDER BY datetime(created_at) ASC, id ASC")
+    .all();
+  res.render("secret", { tracks });
 });
 
 app.get("/diary", (req, res) => {
@@ -171,6 +326,21 @@ app.get("/photos", (req, res) => {
     .prepare("SELECT * FROM photos ORDER BY datetime(created_at) DESC, id DESC")
     .all();
   res.render("photos", { photos });
+});
+
+app.get("/cinema", (req, res) => {
+  const cinema = getCinemaStatus();
+  let film = null;
+  if (cinema.open && cinema.slotKey) {
+    film = db
+      .prepare(
+        `SELECT films.* FROM cinema_slots
+         JOIN films ON films.id = cinema_slots.film_id
+         WHERE cinema_slots.slot = ?`
+      )
+      .get(cinema.slotKey);
+  }
+  res.render("cinema", { film, cinema });
 });
 
 function parseGraffitiPoints(raw) {
@@ -321,6 +491,19 @@ function renderAdmin(res, extras = {}) {
   const photos = db
     .prepare("SELECT * FROM photos ORDER BY datetime(created_at) DESC, id DESC")
     .all();
+  const secretTracks = db
+    .prepare("SELECT * FROM secret_tracks ORDER BY datetime(created_at) DESC, id DESC")
+    .all();
+  const films = db
+    .prepare("SELECT * FROM films ORDER BY datetime(created_at) DESC, id DESC")
+    .all();
+  const cinemaSlots = db
+    .prepare(
+      `SELECT cinema_slots.slot, cinema_slots.film_id, films.title AS film_title
+       FROM cinema_slots
+       LEFT JOIN films ON films.id = cinema_slots.film_id`
+    )
+    .all();
   const graffitiCount = db
     .prepare("SELECT COUNT(*) AS count FROM graffiti_strokes")
     .get().count;
@@ -328,12 +511,20 @@ function renderAdmin(res, extras = {}) {
     posts,
     tracks,
     photos,
+    secretTracks,
+    films,
+    cinemaSlots,
     graffitiCount,
     handleSaved: false,
     trackSaved: false,
     trackError: null,
+    secretTrackSaved: false,
+    secretTrackError: null,
     photoSaved: false,
     photoError: null,
+    filmSaved: false,
+    filmError: null,
+    slotsSaved: false,
     graffitiCleared: false,
     ...extras,
   });
@@ -343,7 +534,10 @@ app.get("/admin", requireAuth, (req, res) => {
   renderAdmin(res, {
     handleSaved: req.query.handle === "saved",
     trackSaved: req.query.track === "saved",
+    secretTrackSaved: req.query.secret === "saved",
     photoSaved: req.query.photo === "saved",
+    filmSaved: req.query.film === "saved",
+    slotsSaved: req.query.slots === "saved",
     graffitiCleared: req.query.graffiti === "cleared",
   });
 });
@@ -400,7 +594,9 @@ app.post("/admin/posts/:id/delete", requireAuth, (req, res) => {
 app.post("/admin/tracks", requireAuth, (req, res) => {
   upload.single("track")(req, res, (err) => {
     if (err) {
-      return renderAdmin(res, { trackError: err.message || "Upload failed." });
+      return renderAdmin(res, {
+        trackError: uploadErrorMessage(err, "Upload failed.", "80MB"),
+      });
     }
     if (!req.file) {
       return renderAdmin(res, { trackError: "Choose an MP3 file to upload." });
@@ -429,10 +625,46 @@ app.post("/admin/tracks/:id/delete", requireAuth, (req, res) => {
   res.redirect("/admin");
 });
 
+app.post("/admin/secret-tracks", requireAuth, (req, res) => {
+  uploadSecret.single("track")(req, res, (err) => {
+    if (err) {
+      return renderAdmin(res, {
+        secretTrackError: uploadErrorMessage(err, "Upload failed.", "600MB"),
+      });
+    }
+    if (!req.file) {
+      return renderAdmin(res, { secretTrackError: "Choose a WAV file to upload." });
+    }
+
+    const fallback = path
+      .basename(req.file.originalname, path.extname(req.file.originalname))
+      .trim();
+    const title = (req.body.title || "").trim() || fallback || "untitled";
+
+    db.prepare(
+      `INSERT INTO secret_tracks (title, filename, original_name) VALUES (?, ?, ?)`
+    ).run(title, req.file.filename, req.file.originalname);
+
+    res.redirect("/admin?secret=saved");
+  });
+});
+
+app.post("/admin/secret-tracks/:id/delete", requireAuth, (req, res) => {
+  const track = db.prepare("SELECT * FROM secret_tracks WHERE id = ?").get(req.params.id);
+  if (track) {
+    db.prepare("DELETE FROM secret_tracks WHERE id = ?").run(track.id);
+    const filePath = path.join(UPLOAD_DIR, track.filename);
+    fs.unlink(filePath, () => {});
+  }
+  res.redirect("/admin");
+});
+
 app.post("/admin/photos", requireAuth, (req, res) => {
   uploadPhoto.single("photo")(req, res, (err) => {
     if (err) {
-      return renderAdmin(res, { photoError: err.message || "Upload failed." });
+      return renderAdmin(res, {
+        photoError: uploadErrorMessage(err, "Upload failed."),
+      });
     }
     if (!req.file) {
       return renderAdmin(res, { photoError: "Choose an image file to upload." });
@@ -461,9 +693,85 @@ app.post("/admin/photos/:id/delete", requireAuth, (req, res) => {
   res.redirect("/admin");
 });
 
+app.post("/admin/films", requireAuth, (req, res) => {
+  uploadFilm.single("film")(req, res, (err) => {
+    if (err) {
+      return renderAdmin(res, {
+        filmError: uploadErrorMessage(err, "Upload failed.", "2GB"),
+      });
+    }
+    if (!req.file) {
+      return renderAdmin(res, { filmError: "Choose a film file to upload." });
+    }
+
+    const fallback = path
+      .basename(req.file.originalname, path.extname(req.file.originalname))
+      .trim();
+    const title = (req.body.title || "").trim() || fallback || "untitled";
+
+    const info = db
+      .prepare(
+        `INSERT INTO films (title, filename, original_name) VALUES (?, ?, ?)`
+      )
+      .run(title, req.file.filename, req.file.originalname);
+
+    const slot = req.body.slot === "20-22" || req.body.slot === "22-00" ? req.body.slot : "";
+    if (slot) {
+      db.prepare("UPDATE cinema_slots SET film_id = ? WHERE slot = ?").run(
+        info.lastInsertRowid,
+        slot
+      );
+    }
+
+    res.redirect("/admin?film=saved");
+  });
+});
+
+app.post("/admin/films/:id/delete", requireAuth, (req, res) => {
+  const film = db.prepare("SELECT * FROM films WHERE id = ?").get(req.params.id);
+  if (film) {
+    db.prepare("UPDATE cinema_slots SET film_id = NULL WHERE film_id = ?").run(film.id);
+    db.prepare("DELETE FROM films WHERE id = ?").run(film.id);
+    const filePath = path.join(FILM_DIR, film.filename);
+    fs.unlink(filePath, () => {});
+  }
+  res.redirect("/admin");
+});
+
+app.post("/admin/cinema-slots", requireAuth, (req, res) => {
+  const upsert = db.prepare("UPDATE cinema_slots SET film_id = ? WHERE slot = ?");
+  for (const slot of ["20-22", "22-00"]) {
+    const raw = req.body[`film_${slot}`];
+    const filmId = raw ? Number(raw) : null;
+    const film = filmId ? db.prepare("SELECT id FROM films WHERE id = ?").get(filmId) : null;
+    upsert.run(film ? film.id : null, slot);
+  }
+  res.redirect("/admin?slots=saved");
+});
+
 app.post("/admin/graffiti/clear", requireAuth, (req, res) => {
   db.prepare("DELETE FROM graffiti_strokes").run();
   res.redirect("/admin?graffiti=cleared");
+});
+
+app.use((err, req, res, next) => {
+  console.error(err);
+  if (req.path && req.path.startsWith("/admin")) {
+    const secret = req.path.startsWith("/admin/secret-tracks");
+    return renderAdmin(res, {
+      trackError: secret ? null : uploadErrorMessage(err, "Upload failed.", "80MB"),
+      secretTrackError: secret
+        ? uploadErrorMessage(err, "Upload failed.", "600MB")
+        : null,
+      photoError: req.path.startsWith("/admin/photos")
+        ? uploadErrorMessage(err, "Upload failed.", "25MB")
+        : null,
+      filmError: req.path.startsWith("/admin/films")
+        ? uploadErrorMessage(err, "Upload failed.", "2GB")
+        : null,
+    });
+  }
+  next(err);
 });
 
 app.use((req, res) => res.status(404).render("404"));

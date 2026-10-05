@@ -205,6 +205,15 @@ body.home-only {
   font-style: italic;
 }
 
+.secret-intro {
+  width: 500px;
+}
+
+.secret-intro p {
+  margin-top: 8px;
+  white-space: pre-line;
+}
+
 .feed {
   width: 500px;
   max-width: 100%;
@@ -320,7 +329,8 @@ body.home-only {
 }
 
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   padding: 5px 7px;
   border: 1px solid var(--line);
@@ -483,6 +493,17 @@ textarea {
   text-align: center;
 }
 
+.player-panel.secret-player {
+  width: 500px;
+  max-width: 100%;
+  margin: 0 0 40px auto;
+  text-align: left;
+}
+
+.player-panel.secret-player .player-controls {
+  justify-content: flex-start;
+}
+
 .player-title {
   margin: 4px 0 18px;
   color: var(--black);
@@ -580,6 +601,39 @@ textarea {
   height: auto;
   margin-top: 10px;
   border: 1px solid var(--line);
+}
+
+.cinema-stage {
+  min-height: calc(100vh - 90px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px 60px;
+}
+
+.player-panel.cinema-panel {
+  width: min(100%, 720px);
+  text-align: left;
+}
+
+.cinema-note {
+  margin: -8px 0 18px;
+  color: var(--grey);
+  font-style: italic;
+}
+
+.cinema-screen {
+  margin: 0 0 18px;
+  background: #111111;
+  border: 1px solid var(--line);
+}
+
+.cinema-screen video {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  background: #111111;
 }
 
 input[type="file"] {

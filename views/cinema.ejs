@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <% pageTitle = 'cinema — two two' %>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <%- include('partials/nav') %>
+
+  <main class="cinema-stage">
+    <div class="player-panel cinema-panel">
+      <div class="bbs-kicker">screening room</div>
+      <h1 class="player-title">two two / cinema</h1>
+
+      <% if (!cinema.open) { %>
+        <p class="cinema-note">the screen is dark.</p>
+        <p class="empty">screenings at 20:00–22:00, 22:00–00:00<br>london time. next screening: <%= cinema.nextLabel %>.</p>
+      <% } else if (!film) { %>
+        <p class="cinema-note">this house: <%= cinema.slot %> · london time</p>
+        <p class="empty">this house is empty.</p>
+      <% } else { %>
+        <p class="cinema-note">this house: <%= cinema.slot %> · london time</p>
+        <div class="now-playing">now screening — <%= film.title %></div>
+        <div class="cinema-screen">
+          <video
+            id="cinema-player"
+            src="/uploads/films/<%= film.filename %>"
+            controls
+            playsinline
+            autoplay
+            loop
+          ></video>
+        </div>
+      <% } %>
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
+
+  <script>
+    setTimeout(function () { location.reload(); }, <%= cinema.reloadAfterMs %>);
+  </script>
+</body>
+</html>

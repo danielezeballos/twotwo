@@ -108,6 +108,52 @@
 
     <div class="admin-row" style="margin-top:3rem;">
       <div>
+        <h1 class="panel-title" style="margin:0;">secret gift songs</h1>
+        <div class="handle-note">upload high-res WAV files for /secretgiftforyou only — they will not show on the music page (up to 600MB each).</div>
+      </div>
+    </div>
+
+    <form class="handle-form" method="POST" action="/admin/secret-tracks" enctype="multipart/form-data">
+      <div class="field">
+        <label for="secret-track-title">track title</label>
+        <input type="text" id="secret-track-title" name="title" maxlength="120" placeholder="optional — defaults to filename">
+      </div>
+      <div class="field">
+        <label for="secret-track-file">wav file</label>
+        <input type="file" id="secret-track-file" name="track" accept=".wav,.WAV,.wave,.aiff,.aif,audio/*">
+      </div>
+      <% if (typeof secretTrackError !== 'undefined' && secretTrackError) { %>
+        <div class="error-msg"><%= secretTrackError %></div>
+      <% } %>
+      <% if (typeof secretTrackSaved !== 'undefined' && secretTrackSaved) { %>
+        <div class="handle-note">secret track uploaded.</div>
+      <% } %>
+      <button type="submit" class="btn">add secret track</button>
+    </form>
+
+    <% const secretList = typeof secretTracks !== 'undefined' && secretTracks ? secretTracks : []; %>
+    <% if (secretList.length === 0) { %>
+      <p class="empty">no secret tracks yet.</p>
+    <% } else { %>
+      <div>
+        <% secretList.forEach(function(track) { %>
+          <div class="admin-list-item">
+            <div class="title-block">
+              <span><%= track.title %></span>
+              <div class="meta"><%= track.original_name %></div>
+            </div>
+            <div class="admin-actions">
+              <form action="/admin/secret-tracks/<%= track.id %>/delete" method="POST" onsubmit="return confirm('Delete this secret track?');">
+                <button type="submit" class="btn danger">delete</button>
+              </form>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <div class="admin-row" style="margin-top:3rem;">
+      <div>
         <h1 class="panel-title" style="margin:0;">photos</h1>
         <div class="handle-note">upload images for the photos page.</div>
       </div>
@@ -120,7 +166,7 @@
       </div>
       <div class="field">
         <label for="photo-file">image file</label>
-        <input type="file" id="photo-file" name="photo" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" required>
+        <input type="file" id="photo-file" name="photo" accept="image/*,.jpg,.jpeg,.png,.gif,.webp" required>
       </div>
       <% if (typeof photoError !== 'undefined' && photoError) { %>
         <div class="error-msg"><%= photoError %></div>
@@ -144,6 +190,87 @@
             </div>
             <div class="admin-actions">
               <form action="/admin/photos/<%= photo.id %>/delete" method="POST" onsubmit="return confirm('Delete this photo?');">
+                <button type="submit" class="btn danger">delete</button>
+              </form>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <div class="admin-row" style="margin-top:3rem;">
+      <div>
+        <h1 class="panel-title" style="margin:0;">cinema</h1>
+        <div class="handle-note">london time houses: 20:00–22:00 and 22:00–00:00. fill a slot to screen that film.</div>
+      </div>
+    </div>
+
+    <% const filmList = typeof films !== 'undefined' && films ? films : []; %>
+    <% const slotList = typeof cinemaSlots !== 'undefined' && cinemaSlots ? cinemaSlots : []; %>
+    <% const slotFilm = {}; slotList.forEach(function (row) { slotFilm[row.slot] = row.film_id; }); %>
+    <form class="handle-form" method="POST" action="/admin/cinema-slots">
+      <div class="field">
+        <label for="film_20-22">20:00 – 22:00</label>
+        <select id="film_20-22" name="film_20-22">
+          <option value="">empty</option>
+          <% filmList.forEach(function(film) { %>
+            <option value="<%= film.id %>" <%= String(slotFilm['20-22'] || '') === String(film.id) ? 'selected' : '' %>><%= film.title %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="field">
+        <label for="film_22-00">22:00 – 00:00</label>
+        <select id="film_22-00" name="film_22-00">
+          <option value="">empty</option>
+          <% filmList.forEach(function(film) { %>
+            <option value="<%= film.id %>" <%= String(slotFilm['22-00'] || '') === String(film.id) ? 'selected' : '' %>><%= film.title %></option>
+          <% }); %>
+        </select>
+      </div>
+      <% if (typeof slotsSaved !== 'undefined' && slotsSaved) { %>
+        <div class="handle-note">slots saved.</div>
+      <% } %>
+      <button type="submit" class="btn">save slots</button>
+    </form>
+
+    <form class="handle-form" method="POST" action="/admin/films" enctype="multipart/form-data">
+      <div class="field">
+        <label for="film-title">film title</label>
+        <input type="text" id="film-title" name="title" maxlength="120" placeholder="optional — defaults to filename">
+      </div>
+      <div class="field">
+        <label for="film-file">film file</label>
+        <input type="file" id="film-file" name="film" accept="video/*,.mp4,.m4v,.webm,.mov">
+      </div>
+      <div class="field">
+        <label for="film-slot">put in slot</label>
+        <select id="film-slot" name="slot">
+          <option value="">library only</option>
+          <option value="20-22">20:00 – 22:00</option>
+          <option value="22-00">22:00 – 00:00</option>
+        </select>
+      </div>
+      <% if (typeof filmError !== 'undefined' && filmError) { %>
+        <div class="error-msg"><%= filmError %></div>
+      <% } %>
+      <% if (typeof filmSaved !== 'undefined' && filmSaved) { %>
+        <div class="handle-note">film uploaded.</div>
+      <% } %>
+      <button type="submit" class="btn">add film</button>
+    </form>
+
+    <% if (filmList.length === 0) { %>
+      <p class="empty">no films yet.</p>
+    <% } else { %>
+      <div>
+        <% filmList.forEach(function(film) { %>
+          <div class="admin-list-item">
+            <div class="title-block">
+              <a href="/cinema"><%= film.title %></a>
+              <div class="meta"><%= film.original_name %></div>
+            </div>
+            <div class="admin-actions">
+              <form action="/admin/films/<%= film.id %>/delete" method="POST" onsubmit="return confirm('Delete this film?');">
                 <button type="submit" class="btn danger">delete</button>
               </form>
             </div>

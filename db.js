@@ -53,7 +53,32 @@ db.exec(`
     points TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS secret_tracks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    original_name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS films (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    original_name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS cinema_slots (
+    slot TEXT PRIMARY KEY,
+    film_id INTEGER,
+    FOREIGN KEY (film_id) REFERENCES films(id)
+  );
 `);
+
+db.prepare("INSERT OR IGNORE INTO cinema_slots (slot, film_id) VALUES (?, NULL)").run("20-22");
+db.prepare("INSERT OR IGNORE INTO cinema_slots (slot, film_id) VALUES (?, NULL)").run("22-00");
 
 // Older databases created before the handle column still need it.
 const postColumns = db.prepare("PRAGMA table_info(posts)").all().map((c) => c.name);
