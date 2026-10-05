@@ -624,6 +624,7 @@ textarea {
 }
 
 .cinema-screen {
+  position: relative;
   margin: 0 0 18px;
   background: #111111;
   border: 1px solid var(--line);
@@ -635,6 +636,102 @@ textarea {
   height: auto;
   max-height: 70vh;
   background: #111111;
+  pointer-events: none;
+}
+
+.cinema-join {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+.cinema-over {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+  color: #ffffff;
+}
+
+.cinema-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  background: #ffffff;
+}
+
+.cinema-volume {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  color: var(--grey-soft);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 9px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.cinema-volume input[type="range"] {
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--black);
+}
+
+.cinema-screen:fullscreen,
+.cinema-screen:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+  background: #111111;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.cinema-screen:fullscreen video,
+.cinema-screen:-webkit-full-screen video {
+  flex: 1;
+  max-height: none;
+  object-fit: contain;
+}
+
+.cinema-screen:fullscreen .cinema-bar,
+.cinema-screen:-webkit-full-screen .cinema-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  background: #111111;
+  opacity: 1;
+  transition: opacity .35s ease;
+}
+
+.cinema-screen:fullscreen.is-idle,
+.cinema-screen:-webkit-full-screen.is-idle {
+  cursor: none;
+}
+
+.cinema-screen:fullscreen.is-idle .cinema-bar,
+.cinema-screen:-webkit-full-screen.is-idle .cinema-bar {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cinema-screen:fullscreen .cinema-volume,
+.cinema-screen:fullscreen .cinema-bar .btn,
+.cinema-screen:-webkit-full-screen .cinema-volume,
+.cinema-screen:-webkit-full-screen .cinema-bar .btn {
+  color: #ffffff;
+  border-color: #ffffff;
 }
 
 input[type="file"] {

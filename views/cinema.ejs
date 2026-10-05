@@ -19,17 +19,24 @@
         <p class="cinema-note">this house: <%= cinema.slot %> · london time</p>
         <p class="empty">this house is empty.</p>
       <% } else { %>
-        <p class="cinema-note">this house: <%= cinema.slot %> · london time</p>
+        <p class="cinema-note">this house: <%= cinema.slot %> · london time · live</p>
         <div class="now-playing">now screening — <%= film.title %></div>
-        <div class="cinema-screen">
+        <div class="cinema-screen" id="cinema-screen">
           <video
             id="cinema-player"
             src="/uploads/films/<%= film.filename %>"
-            controls
             playsinline
             autoplay
-            loop
           ></video>
+          <button type="button" class="cinema-join" id="cinema-join" hidden>join the screening</button>
+          <p class="empty cinema-over" id="cinema-over" hidden>this screening has already finished.</p>
+          <div class="cinema-bar" id="cinema-bar">
+            <label class="cinema-volume">
+              volume
+              <input type="range" id="cinema-volume" min="0" max="1" step="0.01" value="1">
+            </label>
+            <button type="button" class="btn" id="cinema-full">full screen</button>
+          </div>
         </div>
       <% } %>
     </div>
@@ -40,5 +47,128 @@
   <script>
     setTimeout(function () { location.reload(); }, <%= cinema.reloadAfterMs %>);
   </script>
+  <% if (cinema.open && film) { %>
+  <script>
+    (function () {
+      const video = document.getElementById('cinema-player');
+      const joinBtn = document.getElementById('cinema-join');
+      const over = document.getElementById('cinema-over');
+      const screen = document.getElementById('cinema-screen');
+      const bar = document.getElementById('cinema-bar');
+      const volume = document.getElementById('cinema-volume');
+      const fullBtn = document.getElementById('cinema-full');
+      const offsetAtLoad = <%= cinema.liveOffset %>;
+      const loadedAt = Date.now();
+      let syncing = false;
+
+      function livePosition() {
+        return offsetAtLoad + (Date.now() - loadedAt) / 1000;
+      }
+
+      function lockToLive() {
+        if (!isFinite(video.duration) || video.duration <= 0) return;
+        const live = livePosition();
+        if (live >= video.duration) {
+          video.pause();
+          video.hidden = true;
+          joinBtn.hidden = true;
+          if (bar) bar.hidden = true;
+          over.hidden = false;
+          return;
+        }
+        over.hidden = true;
+        video.hidden = false;
+        if (bar) bar.hidden = false;
+        if (Math.abs(video.currentTime - live) > 1.25) {
+          syncing = true;
+          video.currentTime = live;
+        }
+      }
+
+      function playLive() {
+        lockToLive();
+        if (video.hidden) return;
+        const play = video.play();
+        if (play && play.catch) {
+          play.catch(function () {
+            joinBtn.hidden = false;
+          });
+        }
+      }
+
+      video.addEventListener('loadedmetadata', playLive);
+      video.addEventListener('seeked', function () {
+        syncing = false;
+      });
+      video.addEventListener('seeking', function () {
+        if (syncing) return;
+        lockToLive();
+      });
+      video.addEventListener('pause', function () {
+        if (video.hidden) return;
+        playLive();
+      });
+      video.addEventListener('ended', function () {
+        video.hidden = true;
+        if (bar) bar.hidden = true;
+        over.hidden = false;
+      });
+      video.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+      });
+
+      joinBtn.addEventListener('click', function () {
+        joinBtn.hidden = true;
+        playLive();
+      });
+
+      volume.addEventListener('input', function () {
+        video.muted = false;
+        video.volume = Number(volume.value);
+        showChrome();
+      });
+
+      fullBtn.addEventListener('click', function () {
+        const node = screen;
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+          if (document.exitFullscreen) document.exitFullscreen();
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+          return;
+        }
+        if (node.requestFullscreen) node.requestFullscreen();
+        else if (node.webkitRequestFullscreen) node.webkitRequestFullscreen();
+        else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+      });
+
+      let hideTimer = null;
+      function inFullscreen() {
+        return document.fullscreenElement === screen || document.webkitFullscreenElement === screen;
+      }
+      function showChrome() {
+        screen.classList.remove('is-idle');
+        clearTimeout(hideTimer);
+        if (inFullscreen()) {
+          hideTimer = setTimeout(function () {
+            screen.classList.add('is-idle');
+          }, 2500);
+        }
+      }
+      function onFullscreenChange() {
+        if (inFullscreen()) showChrome();
+        else {
+          clearTimeout(hideTimer);
+          screen.classList.remove('is-idle');
+        }
+      }
+      screen.addEventListener('mousemove', showChrome);
+      screen.addEventListener('pointerdown', showChrome);
+      screen.addEventListener('touchstart', showChrome, { passive: true });
+      document.addEventListener('fullscreenchange', onFullscreenChange);
+      document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+
+      setInterval(lockToLive, 4000);
+    })();
+  </script>
+  <% } %>
 </body>
 </html>

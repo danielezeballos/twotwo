@@ -213,6 +213,7 @@ function getCinemaStatus(date = new Date()) {
     open,
     slot,
     slotKey,
+    liveOffset: open ? nowSec - (slotKey === "20-22" ? 20 * 3600 : 22 * 3600) : 0,
     nextLabel: open ? null : "20:00",
     reloadAfterMs: Math.min(waitSec * 1000, 24 * 60 * 60 * 1000),
   };
