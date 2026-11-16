@@ -505,6 +505,16 @@ textarea {
   justify-content: flex-start;
 }
 
+.secret-download {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.secret-download .now-playing {
+  margin-bottom: 12px;
+}
+
 .player-title {
   margin: 4px 0 18px;
   color: var(--black);

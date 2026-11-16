@@ -154,6 +154,44 @@
 
     <div class="admin-row" style="margin-top:3rem;">
       <div>
+        <h1 class="panel-title" style="margin:0;">secret gift download</h1>
+        <div class="handle-note">upload one zip for /secretgiftforyou — songs and other bits. a new upload replaces the current file (up to 2GB).</div>
+      </div>
+    </div>
+
+    <form class="handle-form" method="POST" action="/admin/secret-zip" enctype="multipart/form-data">
+      <div class="field">
+        <label for="secret-zip-file">zip file</label>
+        <input type="file" id="secret-zip-file" name="bundle" accept=".zip,application/zip">
+      </div>
+      <% if (typeof secretZipError !== 'undefined' && secretZipError) { %>
+        <div class="error-msg"><%= secretZipError %></div>
+      <% } %>
+      <% if (typeof secretZipSaved !== 'undefined' && secretZipSaved) { %>
+        <div class="handle-note">zip uploaded. it is ready to download on the secret page.</div>
+      <% } %>
+      <button type="submit" class="btn">upload zip</button>
+    </form>
+
+    <% const zipFile = typeof secretBundle !== 'undefined' && secretBundle ? secretBundle : null; %>
+    <% if (!zipFile) { %>
+      <p class="empty">no zip yet.</p>
+    <% } else { %>
+      <div class="admin-list-item">
+        <div class="title-block">
+          <span><%= zipFile.original_name %></span>
+          <div class="meta">shown on /secretgiftforyou</div>
+        </div>
+        <div class="admin-actions">
+          <form action="/admin/secret-zip/delete" method="POST" onsubmit="return confirm('Remove this zip from the secret page?');">
+            <button type="submit" class="btn danger">delete</button>
+          </form>
+        </div>
+      </div>
+    <% } %>
+
+    <div class="admin-row" style="margin-top:3rem;">
+      <div>
         <h1 class="panel-title" style="margin:0;">photos</h1>
         <div class="handle-note">upload images for the photos page.</div>
       </div>

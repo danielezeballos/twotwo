@@ -28,10 +28,16 @@ const FILM_DIR = path.join(
   "uploads",
   "films"
 );
+const ZIP_DIR = path.join(
+  DATA_DIR === __dirname ? path.join(__dirname, "public") : DATA_DIR,
+  "uploads",
+  "zips"
+);
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 fs.mkdirSync(PHOTO_DIR, { recursive: true });
 fs.mkdirSync(FILM_DIR, { recursive: true });
+fs.mkdirSync(ZIP_DIR, { recursive: true });
 
 const MUSIC_EXTS = new Set([".mp3", ".m4a", ".aac", ".mpeg"]);
 const MUSIC_MAX_BYTES = 80 * 1024 * 1024;
@@ -47,6 +53,13 @@ const WAV_TYPES = new Set([
   "audio/aif",
 ]);
 const SECRET_MAX_BYTES = 600 * 1024 * 1024;
+const ZIP_MAX_BYTES = 2 * 1024 * 1024 * 1024;
+const ZIP_TYPES = new Set([
+  "application/zip",
+  "application/x-zip",
+  "application/x-zip-compressed",
+  "multipart/x-zip",
+]);
 
 function audioType(file) {
   return (file.mimetype || "").toLowerCase().split(";")[0].trim();
@@ -66,6 +79,23 @@ function isSecretAudioFile(file) {
   const ext = audioExt(file);
   const type = audioType(file);
   return WAV_EXTS.has(ext) || WAV_TYPES.has(type) || isMusicFile(file);
+}
+
+function isZipFile(file) {
+  const ext = audioExt(file);
+  const type = audioType(file);
+  return ext === ".zip" || ZIP_TYPES.has(type);
+}
+
+function currentSecretBundle() {
+  return db
+    .prepare("SELECT * FROM secret_bundles ORDER BY datetime(created_at) DESC, id DESC LIMIT 1")
+    .get();
+}
+
+function safeZipName(name) {
+  const base = path.basename(name || "secret.zip").replace(/["\r\n]/g, "") || "secret.zip";
+  return base.toLowerCase().endsWith(".zip") ? base : `${base}.zip`;
 }
 
 function uploadErrorMessage(err, fallback, maxLabel) {
@@ -101,6 +131,20 @@ const uploadSecret = multer({
   fileFilter: (_req, file, cb) => {
     const ok = isSecretAudioFile(file);
     cb(ok ? null : new Error("Please upload a high-res WAV file."), ok);
+  },
+});
+
+const uploadZip = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, ZIP_DIR),
+    filename: (_req, _file, cb) => {
+      cb(null, `${Date.now()}-${crypto.randomBytes(6).toString("hex")}.zip`);
+    },
+  }),
+  limits: { fileSize: ZIP_MAX_BYTES },
+  fileFilter: (_req, file, cb) => {
+    const ok = isZipFile(file);
+    cb(ok ? null : new Error("Please upload a ZIP file."), ok);
   },
 });
 
@@ -269,7 +313,15 @@ app.get("/secretgiftforyou", (req, res) => {
   const tracks = db
     .prepare("SELECT * FROM secret_tracks ORDER BY datetime(created_at) ASC, id ASC")
     .all();
-  res.render("secret", { tracks });
+  res.render("secret", { tracks, bundle: currentSecretBundle() || null });
+});
+
+app.get("/secretgiftforyou/download", (req, res) => {
+  const bundle = currentSecretBundle();
+  if (!bundle) return res.status(404).render("404");
+  const filePath = path.join(ZIP_DIR, bundle.filename);
+  if (!fs.existsSync(filePath)) return res.status(404).render("404");
+  res.download(filePath, safeZipName(bundle.original_name));
 });
 
 app.get("/diary", (req, res) => {
@@ -521,6 +573,9 @@ function renderAdmin(res, extras = {}) {
     trackError: null,
     secretTrackSaved: false,
     secretTrackError: null,
+    secretBundle: currentSecretBundle() || null,
+    secretZipSaved: false,
+    secretZipError: null,
     photoSaved: false,
     photoError: null,
     filmSaved: false,
@@ -536,6 +591,7 @@ app.get("/admin", requireAuth, (req, res) => {
     handleSaved: req.query.handle === "saved",
     trackSaved: req.query.track === "saved",
     secretTrackSaved: req.query.secret === "saved",
+    secretZipSaved: req.query.secretzip === "saved",
     photoSaved: req.query.photo === "saved",
     filmSaved: req.query.film === "saved",
     slotsSaved: req.query.slots === "saved",
@@ -660,6 +716,39 @@ app.post("/admin/secret-tracks/:id/delete", requireAuth, (req, res) => {
   res.redirect("/admin");
 });
 
+app.post("/admin/secret-zip", requireAuth, (req, res) => {
+  uploadZip.single("bundle")(req, res, (err) => {
+    if (err) {
+      return renderAdmin(res, {
+        secretZipError: uploadErrorMessage(err, "Upload failed.", "2GB"),
+      });
+    }
+    if (!req.file) {
+      return renderAdmin(res, { secretZipError: "Choose a ZIP file to upload." });
+    }
+
+    const previous = db.prepare("SELECT * FROM secret_bundles").all();
+    const info = db
+      .prepare(`INSERT INTO secret_bundles (filename, original_name) VALUES (?, ?)`)
+      .run(req.file.filename, req.file.originalname);
+    db.prepare("DELETE FROM secret_bundles WHERE id != ?").run(info.lastInsertRowid);
+    for (const row of previous) {
+      fs.unlink(path.join(ZIP_DIR, row.filename), () => {});
+    }
+
+    res.redirect("/admin?secretzip=saved");
+  });
+});
+
+app.post("/admin/secret-zip/delete", requireAuth, (req, res) => {
+  const bundles = db.prepare("SELECT * FROM secret_bundles").all();
+  db.prepare("DELETE FROM secret_bundles").run();
+  for (const row of bundles) {
+    fs.unlink(path.join(ZIP_DIR, row.filename), () => {});
+  }
+  res.redirect("/admin");
+});
+
 app.post("/admin/photos", requireAuth, (req, res) => {
   uploadPhoto.single("photo")(req, res, (err) => {
     if (err) {
@@ -759,10 +848,14 @@ app.use((err, req, res, next) => {
   console.error(err);
   if (req.path && req.path.startsWith("/admin")) {
     const secret = req.path.startsWith("/admin/secret-tracks");
+    const secretZip = req.path.startsWith("/admin/secret-zip");
     return renderAdmin(res, {
-      trackError: secret ? null : uploadErrorMessage(err, "Upload failed.", "80MB"),
+      trackError: secret || secretZip ? null : uploadErrorMessage(err, "Upload failed.", "80MB"),
       secretTrackError: secret
         ? uploadErrorMessage(err, "Upload failed.", "600MB")
+        : null,
+      secretZipError: secretZip
+        ? uploadErrorMessage(err, "Upload failed.", "2GB")
         : null,
       photoError: req.path.startsWith("/admin/photos")
         ? uploadErrorMessage(err, "Upload failed.", "25MB")
